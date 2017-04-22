@@ -11,6 +11,7 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -49,6 +50,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     final int REQUEST_LOCATION = 1;
     final String SEARCH_URL = "http://ec2-204-236-203-31.compute-1.amazonaws.com:3000/search";
     final String CHECK_URL = "http://ec2-204-236-203-31.compute-1.amazonaws.com:3000/check";
+    final String CANCEL_URL = "http://ec2-204-236-203-31.compute-1.amazonaws.com:3000/cancel";
 
     private GoogleApiClient mGoogleApiClient;
     private Location mLocation;
@@ -62,8 +64,10 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     private SeekBar mMinPeopleSlider;
     private TextView mDistanceText;
     private TextView mMinPeopleText;
+    private ProgressBar mLoadingSpinner;
 
     private boolean mZoomed = false;
+    private boolean mButtonStatus = true;  // true = submit, false = cancel
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -152,90 +156,130 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             }
         });
 
+        mLoadingSpinner = (ProgressBar) findViewById(R.id.loading_spinner);
+
         final Button sendDataButton = (Button) findViewById(R.id.send_data_button);
 
         final RequestQueue queue = Volley.newRequestQueue(this);
 
         sendDataButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                JSONObject data = new JSONObject();
-                JSONObject route = new JSONObject();
-                JSONObject preferences = new JSONObject();
-                System.out.println(mMarker.getPosition().longitude);
-                System.out.println(mMarker.getPosition().latitude);
 
-                if (mLocation != null && mMarker != null) {
+                if (!mButtonStatus) {  // cancel clicked
+                    JSONObject data = new JSONObject();
                     try {
-                        route.put("startLongitude", mLocation.getLongitude());
-                        route.put("startLatitude", mLocation.getLatitude());
-                        route.put("endLongitude", mMarker.getPosition().longitude);
-                        route.put("endLatitude", mMarker.getPosition().latitude);
-                        preferences.put("maxDistance", mDistanceSlider.getProgress() + 100);
-                        preferences.put("minPeople", mMinPeopleSlider.getProgress() + 1);
-                        data.put("userId", "test"); // placeholder
-                        data.put("route", route);
-                        data.put("preferences", preferences);
+                        data.put("userId", "test");  // placeholder
                     } catch (JSONException e) {
                         e.printStackTrace();
                     }
-                }
 
-                JsonObjectRequest jsObjRequest = new JsonObjectRequest
-                        (Request.Method.POST, SEARCH_URL, data, new Response.Listener<JSONObject>() {
+                    JsonObjectRequest jsObjRequest = new JsonObjectRequest
+                            (Request.Method.POST, CANCEL_URL, data, new Response.Listener<JSONObject>() {
 
-                            @Override
-                            public void onResponse(JSONObject response) {
-                                System.out.println(response);
-                                Toast.makeText(getApplicationContext(),
-                                        "lat:" + mLocation.getLatitude() + ", long:" + mLocation.getLongitude(),
-                                        Toast.LENGTH_SHORT)
-                                        .show();
-                            }
-                        }, new Response.ErrorListener() {
+                                @Override
+                                public void onResponse(JSONObject response) {
+                                    System.out.println(response);
+                                    mLoadingSpinner.setVisibility(View.GONE);
+                                    sendDataButton.setText("Submit");
+                                    Toast.makeText(getApplicationContext(),
+                                            "canceled", Toast.LENGTH_SHORT).show();
+                                    mButtonStatus = true;
+                                }
+                            }, new Response.ErrorListener() {
 
-                            @Override
-                            public void onErrorResponse(VolleyError error) {
-                                Toast.makeText(getApplicationContext(), "error", Toast.LENGTH_SHORT).show();
-                            }
-                        });
-                queue.add(jsObjRequest);
+                                @Override
+                                public void onErrorResponse(VolleyError error) {
+                                    Toast.makeText(getApplicationContext(), "error", Toast.LENGTH_SHORT).show();
+                                }
+                            });
+                    queue.add(jsObjRequest);
+                } else {
 
-                new Handler().postDelayed(new Runnable() {
-                    @Override
-                    public void run() {
-                        final Runnable r = this;
-                        JSONObject data = new JSONObject();
+                    JSONObject data = new JSONObject();
+                    JSONObject route = new JSONObject();
+                    JSONObject preferences = new JSONObject();
+                    System.out.println(mMarker.getPosition().longitude);
+                    System.out.println(mMarker.getPosition().latitude);
+
+                    if (mLocation != null && mMarker != null) {
                         try {
+                            route.put("startLongitude", mLocation.getLongitude());
+                            route.put("startLatitude", mLocation.getLatitude());
+                            route.put("endLongitude", mMarker.getPosition().longitude);
+                            route.put("endLatitude", mMarker.getPosition().latitude);
+                            preferences.put("maxDistance", mDistanceSlider.getProgress() + 100);
+                            preferences.put("minPeople", mMinPeopleSlider.getProgress() + 1);
                             data.put("userId", "test"); // placeholder
+                            data.put("route", route);
+                            data.put("preferences", preferences);
                         } catch (JSONException e) {
                             e.printStackTrace();
                         }
-                        JsonObjectRequest jsObjRequest = new JsonObjectRequest
-                                (Request.Method.POST, CHECK_URL, data, new Response.Listener<JSONObject>() {
-
-                                    @Override
-                                    public void onResponse(JSONObject response) {
-                                        System.out.println(response);
-                                        try {
-                                            Toast.makeText(getApplicationContext(),
-                                                    response.getString("status"), Toast.LENGTH_SHORT).show();
-                                            if (response.getString("status").equals("searching")) {
-                                                new Handler().postDelayed(r, 3000);
-                                            }
-                                        } catch (JSONException e) {
-                                            e.printStackTrace();
-                                        }
-                                    }
-                                }, new Response.ErrorListener() {
-
-                                    @Override
-                                    public void onErrorResponse(VolleyError error) {
-                                        Toast.makeText(getApplicationContext(), "error", Toast.LENGTH_SHORT).show();
-                                    }
-                                });
-                        queue.add(jsObjRequest);
                     }
-                }, 3000);
+
+                    JsonObjectRequest jsObjRequest = new JsonObjectRequest
+                            (Request.Method.POST, SEARCH_URL, data, new Response.Listener<JSONObject>() {
+
+                                @Override
+                                public void onResponse(JSONObject response) {
+                                    System.out.println(response);
+                                    mLoadingSpinner.setVisibility(View.VISIBLE);
+                                    sendDataButton.setText("Cancel");
+                                    mButtonStatus = false;
+                                    Toast.makeText(getApplicationContext(),
+                                            "lat:" + mLocation.getLatitude() + ", long:" + mLocation.getLongitude(),
+                                            Toast.LENGTH_SHORT)
+                                            .show();
+                                }
+                            }, new Response.ErrorListener() {
+
+                                @Override
+                                public void onErrorResponse(VolleyError error) {
+                                    Toast.makeText(getApplicationContext(), "error", Toast.LENGTH_SHORT).show();
+                                }
+                            });
+                    queue.add(jsObjRequest);
+
+                    new Handler().postDelayed(new Runnable() {
+                        @Override
+                        public void run() {
+                            final Runnable r = this;
+                            JSONObject data = new JSONObject();
+                            try {
+                                data.put("userId", "test"); // placeholder
+                            } catch (JSONException e) {
+                                e.printStackTrace();
+                            }
+                            JsonObjectRequest jsObjRequest = new JsonObjectRequest
+                                    (Request.Method.POST, CHECK_URL, data, new Response.Listener<JSONObject>() {
+
+                                        @Override
+                                        public void onResponse(JSONObject response) {
+                                            System.out.println(response);
+                                            try {
+                                                Toast.makeText(getApplicationContext(),
+                                                        response.getString("status"), Toast.LENGTH_SHORT).show();
+                                                if (response.getString("status").equals("searching")) {
+                                                    mLoadingSpinner.setVisibility(View.VISIBLE);
+                                                    new Handler().postDelayed(r, 3000);
+                                                } else {
+                                                    mLoadingSpinner.setVisibility(View.GONE);
+                                                }
+                                            } catch (JSONException e) {
+                                                e.printStackTrace();
+                                            }
+                                        }
+                                    }, new Response.ErrorListener() {
+
+                                        @Override
+                                        public void onErrorResponse(VolleyError error) {
+                                            Toast.makeText(getApplicationContext(), "error", Toast.LENGTH_SHORT).show();
+                                        }
+                                    });
+                            queue.add(jsObjRequest);
+                        }
+                    }, 3000);
+                }
             }
         });
     }
