@@ -6,9 +6,10 @@ var db = new loki('loki.json');
 var rides = db.addCollection('rides');
 var geo = require('node-geo-distance');
 distance.apiKey = 'AIzaSyBh0x0MLQAfAdttJuxcJL7IA2BlEz2eNqY';
+var debugmode = true;
 
 router.post('/search', function (req, res, next) {
-    var userId = req.body.userID;
+    var userId = req.body.userId;
     var maxDistance = Number(req.body.preferences.maxDistance);
     var minPeople = Number(req.body.preferences.minPeople);
     var coordinationStart = {
@@ -21,7 +22,7 @@ router.post('/search', function (req, res, next) {
     };
 
     var availableRides = findAvailableRides(coordinationStart, coordinationEnd, maxDistance);
-    console.log(availableRides);
+
 
     if (availableRides.length < 1) {
         addNewRide(userId, maxDistance, minPeople, coordinationStart, coordinationEnd);
@@ -33,13 +34,20 @@ router.post('/search', function (req, res, next) {
         "status": "searching",
         "estimated_Time": "10 minutes"
     };
-    res.send(findPeopleCallback)
+    res.send(findPeopleCallback);
 });
 
 
 router.post('/check', function (req, res, next) {
     var checkAnswer = getPeopleStatus(req.body.userId);
-    res.send(checkAnswer[0])
+    if(debugmode) console.log(req.body.userId);
+    res.send(checkAnswer[0]);
+});
+
+router.get('/all', function (req, res, next) {
+    res.send(rides.where(function (obj) {
+        return true;
+    }));
 });
 
 
@@ -69,7 +77,8 @@ var addNewRide = function (userId, maxDistance, minPeople, coordinationStart, co
             "timeItTakes": "30 min"
         }
     };
-    console.log("newRide");
+    if(debugmode)console.log("New Ride Added");
+    if(debugmode)console.log(JSON.stringify(newride,null,4));
     rides.insert(newride);
 };
 var getPeopleStatus = function (userId) {
@@ -98,7 +107,24 @@ var updateTheRide = function (userId, minPeople, availableRides, maxDistance, co
 
     if(updatedRide.numPeople >= updatedRide.minPeople){
         updatedRide.status = "done";
+        longitudeStartSum = 0;
+        latitudeStartSum = 0;
+        longitudeEndSum = 0;
+        latitueEndSum = 0;
+        for(var i = 0; i < numPeople; i++){
+            longitudeStartSum +=  updatedRide.people[i].longitudeStart;
+            latitudeStartSum +=  updatedRide.people[i].latitudeStart;
+            longitudeEndSum +=  updatedRide.people[i].longitudeEnd;
+            latitueEndSum +=  updatedRide.people[i].latitudeEnd;
+        }
+        updatedRide.meetingLocation.longitude = longitudeStartSum/numPeople;
+        updatedRide.meetingLocation.latitude = latitudeStartSum/numPeople;
+        updatedRide.dropoffLocation.longitude = longitudeEndSum/numPeople;
+        updatedRide.dropoffLocation.latitude = latitueEndSum/numPeople;
     }
+    if(debugmode) console.log("Updated a ride");
+    if(debugmode) console.log(JSON.stringify(updatedRide, null, 4));
+
     rides.insert(updatedRide);
 
 };
@@ -133,7 +159,6 @@ var findAvailableRides = function (coordinationStart, coordinationEnd, maxDistan
         }else{
             okay = false;
         }
-        console.log(okay);
         return okay;
     });
 };
