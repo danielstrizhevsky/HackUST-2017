@@ -10,6 +10,8 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.SeekBar;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.android.volley.Request;
@@ -38,11 +40,13 @@ import com.google.android.gms.maps.model.MarkerOptions;
 
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.w3c.dom.Text;
 
 public class MainActivity extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener, OnMapReadyCallback, LocationListener {
 
     final int REQUEST_LOCATION = 1;
+    final String SEARCH_URL = "http://ec2-204-236-203-31.compute-1.amazonaws.com:3000/search";
 
     private GoogleApiClient mGoogleApiClient;
     private Location mLocation;
@@ -52,6 +56,10 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
     private MapFragment mMapFragment;
     private PlaceAutocompleteFragment mPlaceAutocompleteFragment;
+    private SeekBar mDistanceSlider;
+    private SeekBar mMinPeopleSlider;
+    private TextView mDistanceText;
+    private TextView mMinPeopleText;
 
     private boolean mZoomed = false;
 
@@ -96,36 +104,70 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             }
         });
 
+        mDistanceText = (TextView) findViewById(R.id.distance_text);
+        mDistanceSlider = (SeekBar) findViewById(R.id.distance_slider);
+        mDistanceSlider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
+                if (i == 900) {
+                    mDistanceText.setText("1 km");
+                } else {
+                    mDistanceText.setText((i + 100) + " m");
+                }
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+
+            }
+        });
+
+        mMinPeopleText = (TextView) findViewById(R.id.min_num_text);
+        mMinPeopleSlider = (SeekBar) findViewById(R.id.min_num_slider);
+        mMinPeopleSlider.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
+            @Override
+            public void onProgressChanged(SeekBar seekBar, int i, boolean b) {
+                if (i == 0) {
+                    mMinPeopleText.setText("1 (alone)");
+                } else {
+                    mMinPeopleText.setText((i + 1) + " people");
+                }
+            }
+
+            @Override
+            public void onStartTrackingTouch(SeekBar seekBar) {
+
+            }
+
+            @Override
+            public void onStopTrackingTouch(SeekBar seekBar) {
+
+            }
+        });
+
         final Button sendDataButton = (Button) findViewById(R.id.send_data_button);
 
         final RequestQueue queue = Volley.newRequestQueue(this);
 
         sendDataButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                String url = "http://ec2-204-236-203-31.compute-1.amazonaws.com:3000/search";
                 JSONObject data = new JSONObject();
                 JSONObject route = new JSONObject();
                 JSONObject preferences = new JSONObject();
-//                if (mGoogleApiClient.isConnected()) {
-//                    if (ActivityCompat.checkSelfPermission(getApplicationContext(),
-//                            Manifest.permission.ACCESS_FINE_LOCATION)
-//                            != getPackageManager().PERMISSION_GRANTED) {
-//                        ActivityCompat.requestPermissions(getParent(),
-//                                new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
-//                                REQUEST_LOCATION);
-//                    } else {
-//                        mLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
-//                    }
-//                }
 
                 if (mLocation != null && mMarker != null) {
                     try {
                         route.put("startLongitude", mLocation.getLongitude());
                         route.put("startLatitude", mLocation.getLatitude());
-                        route.put("endLongitude", mMarker.getPosition().longitude);  // placeholder
-                        route.put("endLatitude", mMarker.getPosition().latitude);  // placeholder
-                        preferences.put("maxDistance", 1000);  // placeholder
-                        preferences.put("minNumPeople", 2);  //placeholder
+                        route.put("endLongitude", mMarker.getPosition().longitude);
+                        route.put("endLatitude", mMarker.getPosition().latitude);
+                        preferences.put("maxDistance", mDistanceSlider.getProgress());
+                        preferences.put("minPeople", mMinPeopleSlider.getProgress());
                         data.put("userID", "test");
                         data.put("route", route);
                         data.put("preferences", preferences);
@@ -134,22 +176,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                     }
                 }
 
-                StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
-                        new Response.Listener<String>() {
-                            @Override
-                            public void onResponse(String response) {
-                                Toast.makeText(getApplicationContext(), response, Toast.LENGTH_SHORT).show();
-                            }
-                        }, new Response.ErrorListener() {
-                            @Override
-                            public void onErrorResponse(VolleyError error) {
-                                Toast.makeText(getApplicationContext(), "error", Toast.LENGTH_SHORT).show();
-                            }
-                        });
-                // queue.add(stringRequest);
-
                 JsonObjectRequest jsObjRequest = new JsonObjectRequest
-                        (Request.Method.POST, url, data, new Response.Listener<JSONObject>() {
+                        (Request.Method.POST, SEARCH_URL, data, new Response.Listener<JSONObject>() {
 
                             @Override
                             public void onResponse(JSONObject response) {
