@@ -20,17 +20,32 @@ import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.LocationListener;
+import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.GoogleMap;
+import com.google.android.gms.maps.MapFragment;
+import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
 
 import org.json.JSONException;
 import org.json.JSONObject;
 
-public class MainActivity extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
+public class MainActivity extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks,
+        GoogleApiClient.OnConnectionFailedListener, OnMapReadyCallback, LocationListener {
 
     final int REQUEST_LOCATION = 1;
 
-    GoogleApiClient mGoogleApiClient;
-    Location mLocation;
+    private GoogleApiClient mGoogleApiClient;
+    private Location mLocation;
+    private GoogleMap mGoogleMap;
+    private LocationRequest mLocationRequest;
+    private Marker mMarker;
+
+    private boolean mZoomed = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,7 +59,11 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                     .addApi(LocationServices.API)
                     .build();
         }
+        mLocationRequest = LocationRequest.create();
 
+        MapFragment mapFragment = (MapFragment) getFragmentManager()
+                .findFragmentById(R.id.map);
+        mapFragment.getMapAsync(this);
 
         final Button sendDataButton = (Button) findViewById(R.id.send_data_button);
 
@@ -56,30 +75,32 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 JSONObject data = new JSONObject();
                 JSONObject route = new JSONObject();
                 JSONObject preferences = new JSONObject();
-                if (mGoogleApiClient.isConnected()) {
-                    if (ActivityCompat.checkSelfPermission(getApplicationContext(),
-                            Manifest.permission.ACCESS_FINE_LOCATION)
-                            != getPackageManager().PERMISSION_GRANTED) {
-                        ActivityCompat.requestPermissions(getParent(),
-                                new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
-                                REQUEST_LOCATION);
-                    } else {
-                        mLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
-                    }
-                }
+//                if (mGoogleApiClient.isConnected()) {
+//                    if (ActivityCompat.checkSelfPermission(getApplicationContext(),
+//                            Manifest.permission.ACCESS_FINE_LOCATION)
+//                            != getPackageManager().PERMISSION_GRANTED) {
+//                        ActivityCompat.requestPermissions(getParent(),
+//                                new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+//                                REQUEST_LOCATION);
+//                    } else {
+//                        mLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
+//                    }
+//                }
 
-                try {
-                    route.put("startLongitude", mLocation.getLongitude());
-                    route.put("startLatitude", mLocation.getLatitude());
-                    route.put("endLongitude", 0);  // placeholder
-                    route.put("endLatitude", 0);  // placeholder
-                    preferences.put("maxDistance", 1000);  // placeholder
-                    preferences.put("minNumPeople", 2);  //placeholder
-                    data.put("userID", "test");
-                    data.put("route", route);
-                    data.put("preferences", preferences);
-                } catch (JSONException e) {
-                    e.printStackTrace();
+                if (mLocation != null && mMarker != null) {
+                    try {
+                        route.put("startLongitude", mLocation.getLongitude());
+                        route.put("startLatitude", mLocation.getLatitude());
+                        route.put("endLongitude", mMarker.getPosition().longitude);  // placeholder
+                        route.put("endLatitude", mMarker.getPosition().latitude);  // placeholder
+                        preferences.put("maxDistance", 1000);  // placeholder
+                        preferences.put("minNumPeople", 2);  //placeholder
+                        data.put("userID", "test");
+                        data.put("route", route);
+                        data.put("preferences", preferences);
+                    } catch (JSONException e) {
+                        e.printStackTrace();
+                    }
                 }
 
                 StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
@@ -133,7 +154,18 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
     @Override
     public void onConnected(@Nullable Bundle bundle) {
-
+        if (mGoogleApiClient.isConnected()) {
+            if (ActivityCompat.checkSelfPermission(getApplicationContext(),
+                    Manifest.permission.ACCESS_FINE_LOCATION)
+                    != getPackageManager().PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(getParent(),
+                        new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                        REQUEST_LOCATION);
+            } else {
+                LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient,
+                        mLocationRequest, this);
+            }
+        }
     }
 
     @Override
@@ -144,5 +176,42 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     @Override
     public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
 
+    }
+
+    @Override
+    public void onMapReady(final GoogleMap googleMap) {
+        mGoogleMap = googleMap;
+        if (ActivityCompat.checkSelfPermission(getApplicationContext(),
+                Manifest.permission.ACCESS_FINE_LOCATION)
+                != getPackageManager().PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(getParent(),
+                    new String[]{Manifest.permission.ACCESS_FINE_LOCATION},
+                    REQUEST_LOCATION);
+        } else {
+            mGoogleMap.setMyLocationEnabled(true);
+        }
+        googleMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
+            @Override
+            public void onMapClick(LatLng latLng) {
+                if (mMarker == null) {
+                    mMarker = googleMap.addMarker(new MarkerOptions().position(latLng).draggable(true));
+                } else {
+                    mMarker.remove();
+                    mMarker = googleMap.addMarker(new MarkerOptions().position(latLng).draggable(true));
+                }
+            }
+        });
+    }
+
+    @Override
+    public void onLocationChanged(Location location) {
+        System.out.println(location);
+        mLocation = location;
+        if (!mZoomed) {
+            mGoogleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(
+                    new LatLng(mLocation.getLatitude(), mLocation.getLongitude()), 15
+            ));
+            mZoomed = true;
+        }
     }
 }
