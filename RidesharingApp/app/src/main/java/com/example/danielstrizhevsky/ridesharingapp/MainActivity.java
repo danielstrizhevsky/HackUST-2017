@@ -1,6 +1,7 @@
 package com.example.danielstrizhevsky.ridesharingapp;
 
 import android.Manifest;
+import android.graphics.Bitmap;
 import android.location.Location;
 import android.os.Handler;
 import android.support.annotation.NonNull;
@@ -11,6 +12,7 @@ import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.LinearLayout;
 import android.widget.ProgressBar;
 import android.widget.SeekBar;
 import android.widget.TextView;
@@ -36,9 +38,13 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.OnMapReadyCallback;
+import com.google.android.gms.maps.model.BitmapDescriptor;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.maps.android.ui.IconGenerator;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -51,12 +57,15 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     final String SEARCH_URL = "http://ec2-204-236-203-31.compute-1.amazonaws.com:3000/search";
     final String CHECK_URL = "http://ec2-204-236-203-31.compute-1.amazonaws.com:3000/check";
     final String CANCEL_URL = "http://ec2-204-236-203-31.compute-1.amazonaws.com:3000/cancel";
+    final String CONFIRM_URL = "http://ec2-204-236-203-31.compute-1.amazonaws.com:3000/confirm";
 
     private GoogleApiClient mGoogleApiClient;
     private Location mLocation;
     private GoogleMap mGoogleMap;
     private LocationRequest mLocationRequest;
     private Marker mMarker;
+    private Marker mMeetingMarker;
+    private Marker mDropoffMarker;
 
     private MapFragment mMapFragment;
     private PlaceAutocompleteFragment mPlaceAutocompleteFragment;
@@ -65,8 +74,14 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     private TextView mDistanceText;
     private TextView mMinPeopleText;
     private ProgressBar mLoadingSpinner;
+    private LinearLayout mConfirmLayout;
+    private TextView mFoundPassengersText;
+    private Button mConfirmButton;
+
+    private IconGenerator mIconGenerator;
 
     private boolean mZoomed = false;
+    private boolean mDone = false;
     private boolean mButtonStatus = true;  // true = submit, false = cancel
 
     @Override
@@ -157,10 +172,47 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         });
 
         mLoadingSpinner = (ProgressBar) findViewById(R.id.loading_spinner);
+        mConfirmLayout = (LinearLayout) findViewById(R.id.confirm_layout);
+        mFoundPassengersText = (TextView) findViewById(R.id.found_passengers_text);
+        mConfirmButton = (Button) findViewById(R.id.confirm_button);
+
+        mIconGenerator = new IconGenerator(getApplicationContext());
 
         final Button sendDataButton = (Button) findViewById(R.id.send_data_button);
 
         final RequestQueue queue = Volley.newRequestQueue(this);
+
+        mConfirmButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                JSONObject data = new JSONObject();
+                try {
+                    data.put("userId", "test");  // placeholder
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
+
+                JsonObjectRequest jsObjRequest = new JsonObjectRequest
+                        (Request.Method.POST, CONFIRM_URL, data, new Response.Listener<JSONObject>() {
+
+                            @Override
+                            public void onResponse(JSONObject response) {
+                                System.out.println(response);
+                                mConfirmButton.setText("Confirmed!");
+                                mConfirmButton.setEnabled(false);
+                                Toast.makeText(getApplicationContext(),
+                                        "confirmed", Toast.LENGTH_SHORT).show();
+                            }
+                        }, new Response.ErrorListener() {
+
+                            @Override
+                            public void onErrorResponse(VolleyError error) {
+                                Toast.makeText(getApplicationContext(), "error", Toast.LENGTH_SHORT).show();
+                            }
+                        });
+                queue.add(jsObjRequest);
+            }
+        });
 
         sendDataButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
@@ -198,8 +250,6 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                     JSONObject data = new JSONObject();
                     JSONObject route = new JSONObject();
                     JSONObject preferences = new JSONObject();
-                    System.out.println(mMarker.getPosition().longitude);
-                    System.out.println(mMarker.getPosition().latitude);
 
                     if (mLocation != null && mMarker != null) {
                         try {
@@ -256,14 +306,28 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                                         @Override
                                         public void onResponse(JSONObject response) {
                                             System.out.println(response);
+                                            int numPeople = -1;
                                             try {
                                                 Toast.makeText(getApplicationContext(),
                                                         response.getString("status"), Toast.LENGTH_SHORT).show();
+                                                numPeople = response.getInt("numPeople");
                                                 if (response.getString("status").equals("searching")) {
                                                     mLoadingSpinner.setVisibility(View.VISIBLE);
                                                     new Handler().postDelayed(r, 3000);
                                                 } else {
+                                                    sendDataButton.setEnabled(false);
+                                                    sendDataButton.setText("Submit");
+                                                    mButtonStatus = true;
+                                                    mDone = true;
                                                     mLoadingSpinner.setVisibility(View.GONE);
+                                                    mConfirmLayout.setVisibility(View.VISIBLE);
+                                                    mFoundPassengersText.setText(
+                                                            "Found "
+                                                                    + (numPeople - 1)
+                                                                    + " other passenger(s)!"
+                                                    );
+
+                                                    onMatchFound(response);
                                                 }
                                             } catch (JSONException e) {
                                                 e.printStackTrace();
@@ -282,6 +346,39 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 }
             }
         });
+    }
+
+    private void onMatchFound(JSONObject response) {
+        try {
+            JSONObject meetingLocationObj = response.getJSONObject("meetingLocation");
+            JSONObject dropoffLocationObj = response.getJSONObject("dropoffLocation");
+            LatLng meetingLocation = new LatLng(
+                    meetingLocationObj.getDouble("latitude"),
+                    meetingLocationObj.getDouble("longitude"));
+            LatLng dropoffLocation = new LatLng(
+                    dropoffLocationObj.getDouble("latitude"),
+                    dropoffLocationObj.getDouble("longitude"));
+            if (mMarker != null) {
+                mMarker.remove();
+            }
+            mMarker = null;
+            Bitmap meetingIcon = mIconGenerator.makeIcon("Meet here");
+            mMeetingMarker = mGoogleMap.addMarker(new MarkerOptions().position(meetingLocation));
+            mMeetingMarker.setIcon(BitmapDescriptorFactory.fromBitmap(meetingIcon));
+            Bitmap dropoffIcon = mIconGenerator.makeIcon("Dropoff");
+            mDropoffMarker = mGoogleMap.addMarker(new MarkerOptions().position(dropoffLocation));
+            mDropoffMarker.setIcon(BitmapDescriptorFactory.fromBitmap(dropoffIcon));
+
+            LatLngBounds bounds = new LatLngBounds.Builder()
+                    .include(meetingLocation)
+                    .include(dropoffLocation)
+                    .build();
+
+            mGoogleMap.animateCamera(CameraUpdateFactory.newLatLngBounds(bounds, 150));
+
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -340,8 +437,10 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 if (mMarker != null) {
                     mMarker.remove();
                 }
-                mMarker = mGoogleMap.addMarker(new MarkerOptions().position(latLng).draggable(true));
-                mPlaceAutocompleteFragment.setText("Marker location");
+                if (!mDone) {
+                    mMarker = mGoogleMap.addMarker(new MarkerOptions().position(latLng).draggable(true));
+                    mPlaceAutocompleteFragment.setText("Marker location");
+                }
             }
         });
         mGoogleMap.setOnMarkerDragListener(new GoogleMap.OnMarkerDragListener() {
@@ -367,7 +466,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         System.out.println(location);
         mLocation = location;
         if (!mZoomed) {
-            mGoogleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(
+            mGoogleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(
                     new LatLng(mLocation.getLatitude(), mLocation.getLongitude()), 15
             ));
             mZoomed = true;

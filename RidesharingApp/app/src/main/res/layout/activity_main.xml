@@ -82,7 +82,7 @@
 
                     <TextView
                         android:id="@+id/distance_text"
-                        android:layout_width="60dp"
+                        android:layout_width="65dp"
                         android:layout_height="wrap_content"
                         android:layout_gravity="center"
                         android:gravity="right"
@@ -114,7 +114,7 @@
 
                     <TextView
                         android:id="@+id/min_num_text"
-                        android:layout_width="60dp"
+                        android:layout_width="65dp"
                         android:layout_height="wrap_content"
                         android:layout_gravity="center"
                         android:gravity="right"
@@ -131,6 +131,28 @@
                     android:layout_gravity="center"
                     android:visibility="gone"
                     android:indeterminate="true" />
+
+                <LinearLayout
+                    android:id="@+id/confirm_layout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:paddingTop="30dp"
+                    android:visibility="gone">
+
+                    <TextView
+                        android:id="@+id/found_passengers_text"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:paddingLeft="5dp"
+                        android:text="Found -1 other passengers!" />
+
+                    <Button
+                        android:id="@+id/confirm_button"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Confirm"/>
+                </LinearLayout>
 
             </LinearLayout>
 
