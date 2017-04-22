@@ -26,7 +26,7 @@ router.post('/search', function (req, res, next) {
     if (availableRides.length < 1) {
         addNewRide(userId, maxDistance, minPeople, coordinationStart, coordinationEnd);
     } else {
-        updateTheRide(userId, minPeople, availableRides, maxDistance, coordinationStart);
+        updateTheRide(userId, minPeople, availableRides, maxDistance, coordinationStart, coordinationEnd);
     }
 
     var findPeopleCallback = {
@@ -39,7 +39,7 @@ router.post('/search', function (req, res, next) {
 
 router.post('/check', function (req, res, next) {
     var checkAnswer = getPeopleStatus(req.body.userId);
-    res.send(checkAnswer)
+    res.send(checkAnswer[0])
 });
 
 
@@ -82,14 +82,16 @@ var getPeopleStatus = function (userId) {
     })
 };
 
-var updateTheRide = function (userId, minPeople, availableRides, maxDistance, coordinationStart) {
+var updateTheRide = function (userId, minPeople, availableRides, maxDistance, coordinationStart, coordinationEnd) {
     var updatedRide = availableRides[0];
     rides.remove(updatedRide);
     updatedRide.people[updatedRide.numPeople] = {
         "userId": userId,
         "maxDistanceToWalk": maxDistance,
-        "longitude": coordinationStart.longitude,
-        "latitude": coordinationStart.latitude
+        "longitudeStart": coordinationStart.longitude,
+        "latitudeStart" : coordinationStart.latitude,
+        "longitudeEnd": coordinationEnd.longitude,
+        "latitudeEnd" : coordinationEnd.latitude
     };
     updatedRide.minPeople = Math.max(Number(updatedRide.minPeople), Number(minPeople));
     updatedRide.numPeople = updatedRide.numPeople+1;
