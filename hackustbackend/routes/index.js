@@ -14,14 +14,37 @@ router.post('/search', function(req, res, next) {
         "status":"searching",
         "meetingLocation":{
             "longitude": req.body.route.startLongitude,
-            "latitude": req.body.route.startLatitude
+            "latitude": req.body.route.startLatitude,
+            "radius": req.body.preferences.maxDistance
         }
     };
     res.send(startSearchingAnswer)
 });
 
 router.post('/check', function(req, res, next) {
-    res.send()
+    var checkAnswer = {
+        "userID":req.body.userID,
+        "queryID": req.body.queryID,
+        "numPeopleFound":"0",
+        "status":"found",
+        "numFound": "2",
+        "meetingLocation":{
+            "longitude": req.body.route.startLongitude,
+            "latitude": req.body.route.startLatitude,
+            "radius": req.body.route.maxDistance
+        },
+        "foundPeople":[
+            {
+                "longitude":"1111",
+                "latitude": "1111"
+            },{
+                "longitude":"2222",
+                "latitude": "2222"
+            }
+        ]
+
+    }
+    res.send(startSearchingAnswer)
 });
 
 router.post('/metPeople', function(req, res, next) {

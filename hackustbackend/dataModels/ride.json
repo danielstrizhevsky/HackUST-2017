@@ -1,0 +1,21 @@
+{
+  "numPeople": 2,
+  "peoples":[
+    {
+      "userId": "alkinsen",
+      "queryId": "alkinsen1",
+      "distanceToWalk": "500",
+      "timeToMeetingPoint": "300"
+    },{
+      "userId": "dannys",
+      "queryId": "dannys",
+      "distanceToWalk": "700",
+      "timeToMeetingPoint": "420"
+    }
+  ],
+  "meetingLocation":{
+    "longtitude":"1111",
+    "latitude":"1111",
+    "timeToMeet": "12:32"
+  }
+}
