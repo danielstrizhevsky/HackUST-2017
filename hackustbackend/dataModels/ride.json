@@ -6,27 +6,27 @@
     {
       "userId": "alkinsen",
       "maxDistanceToWalk": "500",
-      "longitudeStart": "1111",
-      "latitudeStart" : "2222",
-      "longitudeEnd": "1111",
-      "latitudeEnd" : "2222"
+      "longitudeStart": "114.263986",
+      "latitudeStart" : "22.3373499",
+      "longitudeEnd": "114.00000000",
+      "latitudeEnd" : "22.0000000"
     },{
       "userId": "dannys",
       "distanceToWalk": "700",
-      "longitudeStart": "1111",
-      "latitudeStart" : "2222",
-      "longitudeEnd": "1111",
-      "latitudeEnd" : "2222"
+      "longitudeStart": "114.263986",
+      "latitudeStart" : "22.3373499",
+      "longitudeEnd": "114.000000",
+      "latitudeEnd" : "22.000000"
     }
   ],
   "meetingLocation":{
-    "longitude":"1111",
-    "latitude":"1111",
+    "longitude":"114.263986",
+    "latitude":"22.3373499",
     "timeToMeet": "12:32"
   },
   "dropoffLocation":{
-    "longitude":"1111",
-    "latitude":"1111",
+    "longitude":"114.000000",
+    "latitude":"22.00000000",
     "timeItTakes":"30 min"
   }
 }
