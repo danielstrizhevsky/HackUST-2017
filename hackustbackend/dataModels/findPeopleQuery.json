@@ -1,0 +1,14 @@
+{
+  "userID":"alkinsen",
+  "route":{
+    "startLongitude":"1111",
+    "startLatitude":"1111",
+    "endLongitude": "11111",
+    "endLatitude": "11111"
+  },
+  "preferences":{
+    "maxDistance":"1000",
+    "minNumPeople":"2"
+  }
+}
+
