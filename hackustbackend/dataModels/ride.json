@@ -1,21 +1,32 @@
 {
   "numPeople": 2,
-  "peoples":[
+  "status":"searching/done",
+  "minPeople": 2,
+  "people":[
     {
       "userId": "alkinsen",
-      "queryId": "alkinsen1",
-      "distanceToWalk": "500",
-      "timeToMeetingPoint": "300"
+      "maxDistanceToWalk": "500",
+      "longitudeStart": "1111",
+      "latitudeStart" : "2222",
+      "longitudeEnd": "1111",
+      "latitudeEnd" : "2222"
     },{
       "userId": "dannys",
-      "queryId": "dannys",
       "distanceToWalk": "700",
-      "timeToMeetingPoint": "420"
+      "longitudeStart": "1111",
+      "latitudeStart" : "2222",
+      "longitudeEnd": "1111",
+      "latitudeEnd" : "2222"
     }
   ],
   "meetingLocation":{
-    "longtitude":"1111",
+    "longitude":"1111",
     "latitude":"1111",
     "timeToMeet": "12:32"
+  },
+  "dropoffLocation":{
+    "longitude":"1111",
+    "latitude":"1111",
+    "timeItTakes":"30 min"
   }
 }
