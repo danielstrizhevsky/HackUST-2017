@@ -2,6 +2,7 @@ package com.example.danielstrizhevsky.ridesharingapp;
 
 import android.Manifest;
 import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.location.Location;
 import android.os.Handler;
 import android.support.annotation.NonNull;
@@ -40,6 +41,7 @@ import com.google.android.gms.maps.MapFragment;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.model.BitmapDescriptor;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
 import com.google.android.gms.maps.model.Marker;
@@ -49,6 +51,11 @@ import com.google.maps.android.ui.IconGenerator;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.w3c.dom.Text;
+
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStreamReader;
+import java.util.Calendar;
 
 public class MainActivity extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener, OnMapReadyCallback, LocationListener {
@@ -459,6 +466,34 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
             }
         });
+
+        try {
+            Calendar curTime = Calendar.getInstance();
+            InputStreamReader is = new InputStreamReader(getAssets().open("clean_set.csv"));
+            BufferedReader reader = new BufferedReader(is);
+            reader.readLine();
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] separatedLine = line.split(",");
+                String time = separatedLine[2];
+                double surge = Double.parseDouble(separatedLine[3]);
+                Calendar pointTime = Calendar.getInstance();
+                pointTime.set(Calendar.HOUR, Integer.parseInt(time.substring(0, 2)));
+                pointTime.set(Calendar.HOUR, Integer.parseInt(time.substring(3, 5)));
+                LatLng point = new LatLng(
+                        Double.parseDouble(separatedLine[0]),
+                        Double.parseDouble(separatedLine[1]));
+                if (Math.abs(curTime.getTimeInMillis() - pointTime.getTimeInMillis()) < 3600000) {
+                    mGoogleMap.addCircle(new CircleOptions()
+                            .center(point)
+                            .radius(50 * surge)
+                            .fillColor(Color.argb(100, 255, (int) (200 - 80 * (surge - 1)), 0))
+                            .strokeColor(Color.argb(100, 255, (int) (200 - 80 * (surge - 1)), 0)));
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
