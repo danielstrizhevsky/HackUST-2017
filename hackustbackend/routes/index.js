@@ -9,8 +9,8 @@ distance.apiKey = 'AIzaSyBh0x0MLQAfAdttJuxcJL7IA2BlEz2eNqY';
 
 router.post('/search', function (req, res, next) {
     var userId = req.body.userID;
-    var maxDistance = req.body.preferences.maxDistance;
-    var minPeople = req.body.preferences.minPeople;
+    var maxDistance = Number(req.body.preferences.maxDistance);
+    var minPeople = Number(req.body.preferences.minPeople);
     var coordinationStart = {
         longitude: Number(req.body.route.startLongitude),
         latitude: Number(req.body.route.startLatitude)
@@ -19,15 +19,14 @@ router.post('/search', function (req, res, next) {
         longitude: Number(req.body.route.endLongitude),
         latitude: Number(req.body.route.endLatitude)
     };
-    var numPeopleFound = 1;
 
     var availableRides = findAvailableRides(coordinationStart, coordinationEnd, maxDistance);
     console.log(availableRides);
 
     if (availableRides.length < 1) {
-        addNewRide(minPeople, coordinationStart, coordinationEnd);
-    }else{
-        updateTheRide(availableRides, maxDistance, coordinationStart);
+        addNewRide(userId, maxDistance, minPeople, coordinationStart, coordinationEnd);
+    } else {
+        updateTheRide(userId, minPeople, availableRides, maxDistance, coordinationStart);
     }
 
     var findPeopleCallback = {
@@ -44,14 +43,14 @@ router.post('/check', function (req, res, next) {
 });
 
 
-var addNewRide = function (minPeople, coordinationStart, coordinationEnd) {
+var addNewRide = function (userId, maxDistance, minPeople, coordinationStart, coordinationEnd) {
     var newride = {
         "numPeople": 1,
         "status": "searching",
-        "minPeople": minPeople,
+        "minPeople": Number(minPeople),
         "people": [
             {
-                "userId": req.body.userID,
+                "userId": userId,
                 "maxDistanceToWalk": maxDistance,
                 "longitudeStart":coordinationStart.longitude,
                 "latitudeStart": coordinationStart.latitude,
@@ -83,19 +82,19 @@ var getPeopleStatus = function (userId) {
     })
 };
 
-var updateTheRide = function (availableRides, maxDistance, coordinationStart) {
+var updateTheRide = function (userId, minPeople, availableRides, maxDistance, coordinationStart) {
     var updatedRide = availableRides[0];
     rides.remove(updatedRide);
     updatedRide.people[updatedRide.numPeople] = {
-        "userId": req.body.userID,
+        "userId": userId,
         "maxDistanceToWalk": maxDistance,
         "longitude": coordinationStart.longitude,
         "latitude": coordinationStart.latitude
     };
-    updatedRide.minPeople = Math.max(Number(updatedRide.minPeople), Number(req.body.preferences.minPeople))
-    updatedRide.numPeople = 2;
+    updatedRide.minPeople = Math.max(Number(updatedRide.minPeople), Number(minPeople));
+    updatedRide.numPeople = updatedRide.numPeople+1;
 
-    if(updatedRide.numPeople >= minPeople){
+    if(updatedRide.numPeople >= updatedRide.minPeople){
         updatedRide.status = "done";
     }
     rides.insert(updatedRide);
