@@ -5,6 +5,7 @@
   "people":[
     {
       "userId": "alkinsen",
+      "minPeople": "2",
       "maxDistanceToWalk": "500",
       "longitudeStart": "114.263986",
       "latitudeStart" : "22.3373499",
@@ -12,6 +13,7 @@
       "latitudeEnd" : "22.0000000"
     },{
       "userId": "dannys",
+      "minPeople": "2",
       "distanceToWalk": "700",
       "longitudeStart": "114.263986",
       "latitudeStart" : "22.3373499",

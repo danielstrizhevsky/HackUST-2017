@@ -3,6 +3,7 @@ var loki = require('lokijs');
 var distance = require('google-distance');
 var router = express.Router();
 var db = new loki('loki.json');
+var donerides = db.addCollection('donerides');
 var rides = db.addCollection('rides');
 var geo = require('node-geo-distance');
 distance.apiKey = 'AIzaSyBh0x0MLQAfAdttJuxcJL7IA2BlEz2eNqY';
@@ -37,11 +38,23 @@ router.post('/search', function (req, res, next) {
     res.send(findPeopleCallback);
 });
 
+router.post('/cancel', function (req, res, next) {
+    var userId = req.body.userId;
+    removeFromRides(userId);
+    res.send({"status": "canceled"});
+});
+
+router.post('/confirm', function (req, res, next) {
+    var confirmAnswer = confirmPerson(req.body.userId);
+
+    res.send({"status": "confirmed"});
+});
+
 
 router.post('/check', function (req, res, next) {
-    var checkAnswer = getPeopleStatus(req.body.userId);
-    if(debugmode) console.log(req.body.userId);
-    res.send(checkAnswer[0]);
+    var checkAnswer = getPeopleStatus(req.body.userId)[0];
+    if(debugmode) console.log("checking for " + req.body.userId);
+    res.send(checkAnswer);
 });
 
 router.get('/all', function (req, res, next) {
@@ -50,7 +63,48 @@ router.get('/all', function (req, res, next) {
     }));
 });
 
+var removeFromRides = function (userId) {
+    var ride = getPeopleStatus(userId)[0];
+    rides.remove(ride);
+    var people = [];
+    var counter = 0;
+    var minPeople = 1;
+    ride.numPeople = Number(ride.numPeople) - 1;
+    for(var i = 0; i < ride.people.length; i++){
+        if(ride.people[i].userId != userId){
+            minPeople = Math.max(minPeople, Number(ride.people[i].minPeople));
+            people[counter] = ride.people[i];
+            counter++;
+        }
+    }
+    ride.people = people;
+    ride.minPeople = minPeople;
+    if(debugmode)console.log(userId + " canceled!");
+    if(debugmode)console.log(JSON.stringify(ride,null,4));
 
+    if(ride.people.length > 0){
+        rides.insert(ride);
+    }
+
+};
+
+var confirmPerson = function (userId) {
+    var doneride = getPeopleStatus(userId)[0];
+    donerides.remove(doneride);
+    var isAllTrue = true;
+    for(var i = 0; i < doneride.people.length; i++){
+        if(doneride.people[i].userId == userId){
+            doneride.people[i].confirmed = "True"
+        }
+        if(doneride.people[i].confirmed == "False"){
+            isAllTrue = false;
+        }
+    }
+    if(!isAllTrue){
+        donerides.insert(doneride);
+    }
+
+};
 var addNewRide = function (userId, maxDistance, minPeople, coordinationStart, coordinationEnd) {
     var newride = {
         "numPeople": 1,
@@ -59,11 +113,13 @@ var addNewRide = function (userId, maxDistance, minPeople, coordinationStart, co
         "people": [
             {
                 "userId": userId,
+                "minPeople": Number(minPeople),
                 "maxDistanceToWalk": maxDistance,
                 "longitudeStart":coordinationStart.longitude,
                 "latitudeStart": coordinationStart.latitude,
                 "longitudeEnd":coordinationEnd.longitude,
-                "latitudeEnd": coordinationEnd.latitude
+                "latitudeEnd": coordinationEnd.latitude,
+                "confirmed": "False"
             }
         ],
         "meetingLocation": {
@@ -82,13 +138,25 @@ var addNewRide = function (userId, maxDistance, minPeople, coordinationStart, co
     rides.insert(newride);
 };
 var getPeopleStatus = function (userId) {
-    return rides.where(function (obj) {
+    var ride = donerides.where(function (obj) {
         for (var i = 0; i < obj.numPeople; i++) {
             var person = obj.people[i];
             if(person.userId == userId) return true;
         }
         return false;
-    })
+    });
+
+    if (ride.length == 0){
+        ride = rides.where(function (obj) {
+            for (var i = 0; i < obj.numPeople; i++) {
+                var person = obj.people[i];
+                if(person.userId == userId) return true;
+            }
+            return false;
+        });
+    }
+
+    return ride;
 };
 
 var updateTheRide = function (userId, minPeople, availableRides, maxDistance, coordinationStart, coordinationEnd) {
@@ -96,11 +164,13 @@ var updateTheRide = function (userId, minPeople, availableRides, maxDistance, co
     rides.remove(updatedRide);
     updatedRide.people[updatedRide.numPeople] = {
         "userId": userId,
+        "minPeople": Number(minPeople),
         "maxDistanceToWalk": maxDistance,
         "longitudeStart": coordinationStart.longitude,
         "latitudeStart" : coordinationStart.latitude,
         "longitudeEnd": coordinationEnd.longitude,
-        "latitudeEnd" : coordinationEnd.latitude
+        "latitudeEnd" : coordinationEnd.latitude,
+        "confirmed": "False"
     };
     updatedRide.minPeople = Math.max(Number(updatedRide.minPeople), Number(minPeople));
     updatedRide.numPeople = updatedRide.numPeople+1;
@@ -111,21 +181,26 @@ var updateTheRide = function (userId, minPeople, availableRides, maxDistance, co
         latitudeStartSum = 0;
         longitudeEndSum = 0;
         latitueEndSum = 0;
-        for(var i = 0; i < numPeople; i++){
+        for(var i = 0; i < updatedRide.numPeople; i++){
             longitudeStartSum +=  updatedRide.people[i].longitudeStart;
             latitudeStartSum +=  updatedRide.people[i].latitudeStart;
             longitudeEndSum +=  updatedRide.people[i].longitudeEnd;
             latitueEndSum +=  updatedRide.people[i].latitudeEnd;
         }
-        updatedRide.meetingLocation.longitude = longitudeStartSum/numPeople;
-        updatedRide.meetingLocation.latitude = latitudeStartSum/numPeople;
-        updatedRide.dropoffLocation.longitude = longitudeEndSum/numPeople;
-        updatedRide.dropoffLocation.latitude = latitueEndSum/numPeople;
-    }
-    if(debugmode) console.log("Updated a ride");
-    if(debugmode) console.log(JSON.stringify(updatedRide, null, 4));
+        updatedRide.meetingLocation.longitude = longitudeStartSum/updatedRide.numPeople;
+        updatedRide.meetingLocation.latitude = latitudeStartSum/updatedRide.numPeople;
+        updatedRide.dropoffLocation.longitude = longitudeEndSum/updatedRide.numPeople;
+        updatedRide.dropoffLocation.latitude = latitueEndSum/updatedRide.numPeople;
+        donerides.insert(updatedRide);
+        if(debugmode) console.log("Finished searching a ride.");
+        if(debugmode) console.log(JSON.stringify(updatedRide, null, 4));
+    }else{
+        if(debugmode) console.log("Updated a ride");
+        if(debugmode) console.log(JSON.stringify(updatedRide, null, 4));
 
-    rides.insert(updatedRide);
+        rides.insert(updatedRide);
+    }
+
 
 };
 var findAvailableRides = function (coordinationStart, coordinationEnd, maxDistance) {
