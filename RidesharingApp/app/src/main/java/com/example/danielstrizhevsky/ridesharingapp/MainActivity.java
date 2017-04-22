@@ -2,6 +2,7 @@ package com.example.danielstrizhevsky.ridesharingapp;
 
 import android.Manifest;
 import android.location.Location;
+import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
@@ -47,6 +48,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
     final int REQUEST_LOCATION = 1;
     final String SEARCH_URL = "http://ec2-204-236-203-31.compute-1.amazonaws.com:3000/search";
+    final String CHECK_URL = "http://ec2-204-236-203-31.compute-1.amazonaws.com:3000/check";
 
     private GoogleApiClient mGoogleApiClient;
     private Location mLocation;
@@ -159,6 +161,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 JSONObject data = new JSONObject();
                 JSONObject route = new JSONObject();
                 JSONObject preferences = new JSONObject();
+                System.out.println(mMarker.getPosition().longitude);
+                System.out.println(mMarker.getPosition().latitude);
 
                 if (mLocation != null && mMarker != null) {
                     try {
@@ -166,9 +170,9 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                         route.put("startLatitude", mLocation.getLatitude());
                         route.put("endLongitude", mMarker.getPosition().longitude);
                         route.put("endLatitude", mMarker.getPosition().latitude);
-                        preferences.put("maxDistance", mDistanceSlider.getProgress());
-                        preferences.put("minPeople", mMinPeopleSlider.getProgress());
-                        data.put("userID", "test");
+                        preferences.put("maxDistance", mDistanceSlider.getProgress() + 100);
+                        preferences.put("minPeople", mMinPeopleSlider.getProgress() + 1);
+                        data.put("userId", "test"); // placeholder
                         data.put("route", route);
                         data.put("preferences", preferences);
                     } catch (JSONException e) {
@@ -195,6 +199,43 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                             }
                         });
                 queue.add(jsObjRequest);
+
+                new Handler().postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        final Runnable r = this;
+                        JSONObject data = new JSONObject();
+                        try {
+                            data.put("userId", "test"); // placeholder
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+                        JsonObjectRequest jsObjRequest = new JsonObjectRequest
+                                (Request.Method.POST, CHECK_URL, data, new Response.Listener<JSONObject>() {
+
+                                    @Override
+                                    public void onResponse(JSONObject response) {
+                                        System.out.println(response);
+                                        try {
+                                            Toast.makeText(getApplicationContext(),
+                                                    response.getString("status"), Toast.LENGTH_SHORT).show();
+                                            if (response.getString("status").equals("searching")) {
+                                                new Handler().postDelayed(r, 3000);
+                                            }
+                                        } catch (JSONException e) {
+                                            e.printStackTrace();
+                                        }
+                                    }
+                                }, new Response.ErrorListener() {
+
+                                    @Override
+                                    public void onErrorResponse(VolleyError error) {
+                                        Toast.makeText(getApplicationContext(), "error", Toast.LENGTH_SHORT).show();
+                                    }
+                                });
+                        queue.add(jsObjRequest);
+                    }
+                }, 3000);
             }
         });
     }
@@ -257,6 +298,22 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 }
                 mMarker = mGoogleMap.addMarker(new MarkerOptions().position(latLng).draggable(true));
                 mPlaceAutocompleteFragment.setText("Marker location");
+            }
+        });
+        mGoogleMap.setOnMarkerDragListener(new GoogleMap.OnMarkerDragListener() {
+            @Override
+            public void onMarkerDragStart(Marker marker) {
+
+            }
+
+            @Override
+            public void onMarkerDrag(Marker marker) {
+
+            }
+
+            @Override
+            public void onMarkerDragEnd(Marker marker) {
+
             }
         });
     }
