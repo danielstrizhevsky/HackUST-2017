@@ -9,6 +9,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.Toast;
 
 import com.android.volley.Request;
@@ -20,9 +21,13 @@ import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.Status;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.places.Place;
+import com.google.android.gms.location.places.ui.PlaceAutocompleteFragment;
+import com.google.android.gms.location.places.ui.PlaceSelectionListener;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.MapFragment;
@@ -45,6 +50,9 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     private LocationRequest mLocationRequest;
     private Marker mMarker;
 
+    private MapFragment mMapFragment;
+    private PlaceAutocompleteFragment mPlaceAutocompleteFragment;
+
     private boolean mZoomed = false;
 
     @Override
@@ -61,9 +69,32 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         }
         mLocationRequest = LocationRequest.create();
 
-        MapFragment mapFragment = (MapFragment) getFragmentManager()
+        mMapFragment = (MapFragment) getFragmentManager()
                 .findFragmentById(R.id.map);
-        mapFragment.getMapAsync(this);
+        mMapFragment.getMapAsync(this);
+
+        mPlaceAutocompleteFragment = (PlaceAutocompleteFragment)
+                getFragmentManager().findFragmentById(R.id.place_autocomplete_fragment);
+        mPlaceAutocompleteFragment.setHint("Search destinations");
+        mPlaceAutocompleteFragment.setOnPlaceSelectedListener(new PlaceSelectionListener() {
+            @Override
+            public void onPlaceSelected(Place place) {
+                if (mMarker == null) {
+                    mMarker = mGoogleMap.addMarker(new MarkerOptions().position(place.getLatLng()).draggable(true));
+                } else {
+                    mMarker.remove();
+                    mMarker = mGoogleMap.addMarker(new MarkerOptions().position(place.getLatLng()).draggable(true));
+                }
+                mGoogleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(place.getLatLng(), 15
+                ));
+            }
+
+            @Override
+            public void onError(Status status) {
+                // TODO: Handle the error.
+                System.out.println("An error occurred: " + status);
+            }
+        });
 
         final Button sendDataButton = (Button) findViewById(R.id.send_data_button);
 
@@ -190,15 +221,14 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         } else {
             mGoogleMap.setMyLocationEnabled(true);
         }
-        googleMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
+        mGoogleMap.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
             @Override
             public void onMapClick(LatLng latLng) {
-                if (mMarker == null) {
-                    mMarker = googleMap.addMarker(new MarkerOptions().position(latLng).draggable(true));
-                } else {
+                if (mMarker != null) {
                     mMarker.remove();
-                    mMarker = googleMap.addMarker(new MarkerOptions().position(latLng).draggable(true));
                 }
+                mMarker = mGoogleMap.addMarker(new MarkerOptions().position(latLng).draggable(true));
+                mPlaceAutocompleteFragment.setText("Marker location");
             }
         });
     }
