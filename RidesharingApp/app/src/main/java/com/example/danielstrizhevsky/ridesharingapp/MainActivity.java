@@ -194,7 +194,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             public void onClick(View view) {
                 JSONObject data = new JSONObject();
                 try {
-                    data.put("userId", "test");  // placeholder
+                    data.put("userId", "test2");  // placeholder
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
@@ -207,14 +207,14 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                                 System.out.println(response);
                                 mConfirmButton.setText("Confirmed!");
                                 mConfirmButton.setEnabled(false);
-                                Toast.makeText(getApplicationContext(),
-                                        "confirmed", Toast.LENGTH_SHORT).show();
+//                                Toast.makeText(getApplicationContext(),
+//                                        "confirmed", Toast.LENGTH_SHORT).show();
                             }
                         }, new Response.ErrorListener() {
 
                             @Override
                             public void onErrorResponse(VolleyError error) {
-                                Toast.makeText(getApplicationContext(), "error", Toast.LENGTH_SHORT).show();
+//                                Toast.makeText(getApplicationContext(), "error", Toast.LENGTH_SHORT).show();
                             }
                         });
                 queue.add(jsObjRequest);
@@ -227,7 +227,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 if (!mButtonStatus) {  // cancel clicked
                     JSONObject data = new JSONObject();
                     try {
-                        data.put("userId", "test");  // placeholder
+                        data.put("userId", "test2");  // placeholder
                     } catch (JSONException e) {
                         e.printStackTrace();
                     }
@@ -240,15 +240,15 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                                     System.out.println(response);
                                     mLoadingSpinner.setVisibility(View.GONE);
                                     sendDataButton.setText("Submit");
-                                    Toast.makeText(getApplicationContext(),
-                                            "canceled", Toast.LENGTH_SHORT).show();
+//                                    Toast.makeText(getApplicationContext(),
+//                                            "canceled", Toast.LENGTH_SHORT).show();
                                     mButtonStatus = true;
                                 }
                             }, new Response.ErrorListener() {
 
                                 @Override
                                 public void onErrorResponse(VolleyError error) {
-                                    Toast.makeText(getApplicationContext(), "error", Toast.LENGTH_SHORT).show();
+//                                    Toast.makeText(getApplicationContext(), "error", Toast.LENGTH_SHORT).show();
                                 }
                             });
                     queue.add(jsObjRequest);
@@ -266,7 +266,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                             route.put("endLatitude", mMarker.getPosition().latitude);
                             preferences.put("maxDistance", mDistanceSlider.getProgress() + 100);
                             preferences.put("minPeople", mMinPeopleSlider.getProgress() + 1);
-                            data.put("userId", "test"); // placeholder
+                            data.put("userId", "test2"); // placeholder
                             data.put("route", route);
                             data.put("preferences", preferences);
                         } catch (JSONException e) {
@@ -283,16 +283,16 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                                     mLoadingSpinner.setVisibility(View.VISIBLE);
                                     sendDataButton.setText("Cancel");
                                     mButtonStatus = false;
-                                    Toast.makeText(getApplicationContext(),
-                                            "lat:" + mLocation.getLatitude() + ", long:" + mLocation.getLongitude(),
-                                            Toast.LENGTH_SHORT)
-                                            .show();
+//                                    Toast.makeText(getApplicationContext(),
+//                                            "lat:" + mLocation.getLatitude() + ", long:" + mLocation.getLongitude(),
+//                                            Toast.LENGTH_SHORT)
+//                                            .show();
                                 }
                             }, new Response.ErrorListener() {
 
                                 @Override
                                 public void onErrorResponse(VolleyError error) {
-                                    Toast.makeText(getApplicationContext(), "error", Toast.LENGTH_SHORT).show();
+//                                    Toast.makeText(getApplicationContext(), "error", Toast.LENGTH_SHORT).show();
                                 }
                             });
                     queue.add(jsObjRequest);
@@ -303,7 +303,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                             final Runnable r = this;
                             JSONObject data = new JSONObject();
                             try {
-                                data.put("userId", "test"); // placeholder
+                                data.put("userId", "test2"); // placeholder
                             } catch (JSONException e) {
                                 e.printStackTrace();
                             }
@@ -315,8 +315,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                                             System.out.println(response);
                                             int numPeople = -1;
                                             try {
-                                                Toast.makeText(getApplicationContext(),
-                                                        response.getString("status"), Toast.LENGTH_SHORT).show();
+//                                                Toast.makeText(getApplicationContext(),
+//                                                        response.getString("status"), Toast.LENGTH_SHORT).show();
                                                 numPeople = response.getInt("numPeople");
                                                 if (response.getString("status").equals("searching")) {
                                                     mLoadingSpinner.setVisibility(View.VISIBLE);
@@ -344,7 +344,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
                                         @Override
                                         public void onErrorResponse(VolleyError error) {
-                                            Toast.makeText(getApplicationContext(), "error", Toast.LENGTH_SHORT).show();
+//                                            Toast.makeText(getApplicationContext(), "error", Toast.LENGTH_SHORT).show();
                                         }
                                     });
                             queue.add(jsObjRequest);
@@ -479,7 +479,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 double surge = Double.parseDouble(separatedLine[3]);
                 Calendar pointTime = Calendar.getInstance();
                 pointTime.set(Calendar.HOUR, Integer.parseInt(time.substring(0, 2)));
-                pointTime.set(Calendar.HOUR, Integer.parseInt(time.substring(3, 5)));
+                pointTime.set(Calendar.MINUTE, Integer.parseInt(time.substring(3, 5)));
                 LatLng point = new LatLng(
                         Double.parseDouble(separatedLine[0]),
                         Double.parseDouble(separatedLine[1]));
